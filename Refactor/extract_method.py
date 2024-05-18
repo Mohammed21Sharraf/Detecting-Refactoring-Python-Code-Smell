@@ -1,80 +1,53 @@
-import re
-import keyword
+method_count = 1
+function_name_ending = ['):', '\n', '']
+functions = ['']
 
-def extract_method(filename):
-    line_num = 1
-    codes = {}
-    variables = []
-    indentation = False
-    
-    new_method = open('Refactor/new_method.py', 'w')
-    new_method.writelines(['def', ' ', 'method():', '\n', ''])
-
-    with open(filename, 'rb') as f:
-        for line in f:
-            line_with_whitespace = line.decode("utf-8")
-            
-            line_code_arr = re.split(r'(\s+)', line_with_whitespace)
-
-            if line_num == 1:
-                codes[line_num] = line_code_arr
-                line_num += 1
-                # print(line_code_arr)
-                continue
+def write_function_name(parameters):
+    global method_count, function_name_ending, functions
+    function_name = ['def', ' ', f'method_{method_count}(']
         
-            # Process the parts as needed
-            # print(line_code_arr[2])
-            if line_code_arr[2] == 'if' or line_code_arr[2] == 'elif' or line_code_arr[2] == 'else' or len(line_code_arr[1]) >= 8:
-                indentation = True
-            else:
-                indentation = False
-
-            # print(indentation)
-            # print(line_code_arr)
-            if indentation == True:
-                for i in range(len(line_code_arr)):
-                    if line_code_arr[i] == 'return' or line_code_arr[i] == '#':
-                        break
-
-                    if re.match(r'^["\']', line_code_arr[i]) is not None:
-                        continue
-                    
-                    if line_code_arr[i].isalpha() and not keyword.iskeyword(line_code_arr[i]):
-                        if line_code_arr[i] not in variables:
-                            variables.append(line_code_arr[i])
-
-                new_method.writelines(line_code_arr)
-
-    # print(variables)
-    # print(codes)
-            
-
-    parameters = ''
-    for i in range(len(variables)):
-        if i != len(variables) - 1:
-            parameters += variables[i] + ', '
+    for i in range(len(parameters)):
+        if i != len(parameters) - 1:
+            function_name.append(parameters[i] + ',')
+            function_name.append(' ')
         else:
-            parameters += variables[i]
+            function_name.append(parameters[i])
+
+    function_name.extend(function_name_ending)
+    method_count += 1
     
-    # print(new_method.readlines())
+    name = '    '
+    for i  in function_name[2:]:
+        if i == '):':
+            i = ')'
+        name += i
+    functions.append(name)
+    # print(functions)
+    return function_name
+
+
+def extract_method(data, long_condition):
+    new_method = open('new_method.py', 'w')
     
+    for key in long_condition:
+        parameters = long_condition[key][1]
+
+        function_name = write_function_name(parameters)
+        new_method.writelines(function_name)
+        
+        
+        start = long_condition[key][0][0]
+        end = long_condition[key][0][1]
+
+        while start != end + 1:
+            code = data[start]
+
+            if start == end:
+                code.append('\n')
+
+            new_method.writelines(code)
+            start += 1
+
     new_method.close()
 
-    with open('Refactor/new_method.py', 'r') as f:
-        new_method_lines = f.readlines()
-     
-    # print(new_method_lines)
-    first_line = new_method_lines[0]
-    modified_first_line = first_line.replace("(", f"({parameters}")
-    new_method_lines[0] = modified_first_line
-
-    with open('Refactor/new_method.py', 'w') as file:
-        file.writelines(new_method_lines)
-
-    # with open('new_method.py', r)
-
-# ['', '    ', 'num', ' ', '=', ' ', '10', '\n', '']
-# ['', '    ', 'if', ' ', 'age', ' ', '<', ' ', '18:', '\n', '']
-# ['', '    ', 'okay', ' ', '=', ' ', "'okay'"]
-
-extract_method('/Users/kaziknobo/Desktop/CSE 400 Thesis/Refactor/example_code.py')
+    return functions
